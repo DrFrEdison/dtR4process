@@ -10,23 +10,23 @@ service_email_LG3 <- function(today, yesterday
                               , delete_emails = F
                               , unzip_server = T
                               , unzip_type = NA){
-  
+
   library(mRpostman)
   library(zip)
   library(data.table)
-  
+
   lg3_service_email <- list()
   # convert date to outlook-date ####
   lg3_service_email$today_outlook <- format(today, "%d-%b-%Y")
   lg3_service_email$today_outlook <- gsub(substr(lg3_service_email$today_outlook, 4, 6)
                                           , month.abb[as.numeric(format(today,"%m"))]
                                           , lg3_service_email$today_outlook)
-  
+
   lg3_service_email$yesterday_outlook <- format(yesterday, "%d-%b-%Y")
   lg3_service_email$yesterday_outlook <- gsub(substr(lg3_service_email$yesterday_outlook, 4, 6)
                                               , month.abb[as.numeric(format(yesterday,"%m"))]
                                               , lg3_service_email$yesterday_outlook)
-  
+
   # Configure Email ####
   con <- configure_imap(url=serviceimap,
                         username=servicemail,
@@ -35,17 +35,17 @@ service_email_LG3 <- function(today, yesterday
                         verbose = verbose,
                         buffersize = 512000,
                         timeout_ms = 10000)
-  
+
   con$reset_timeout_ms(x = 30000) # Long timeout to ensure the system has enough time to process the emails
   con$reset_verbose(x = FALSE) # The responding text is just too long, therefore suppress it
-  
+
   # con$list_mail_folders() # List folders
-  
+
   # Loop to run script for all LG1 and LG2 ####
   for(i in 1:nrow(systems)){
-    
+
     con$select_folder(name = folder) # Select Inbox
-    
+
     # Create and navigate to folder customer/location/line
     dir.create(wd_export, showWarnings = F)
     setwd(wd_export)
@@ -55,76 +55,78 @@ service_email_LG3 <- function(today, yesterday
     setwd(paste0("./",systems$short[i]))
     dir.create(systems$line[i], showWarnings = F)
     setwd(paste0("./",systems$line[i]))
-    
+
     lg3_service_email$wdc <- getwd() # Save current path
-    
+
     # Search for log_zip emails ####
     lg3_service_email$search_log.drk <- paste0(yesterday, "_", systems$customer[i], "_", systems$location[i], "_", systems$line[i], "_drk")
     lg3_service_email$find_log.drk <- con$search(request = AND(mRpostman::string(expr = lg3_service_email$search_log.drk, where = "SUBJECT"),
                                                                since(date_char = lg3_service_email$today_outlook)), use_uid = T)
-    
+    lg3_service_email$find_log.drk <- lg3_service_email$find_log.drk[ length( lg3_service_email$find_log.drk ) ]
+
     lg3_service_email$search_log.ref <- paste0(yesterday, "_", systems$customer[i], "_", systems$location[i], "_", systems$line[i], "_ref")
     lg3_service_email$find_log.ref <- con$search(request = AND(mRpostman::string(expr = lg3_service_email$search_log.ref, where = "SUBJECT"),
                                                                since(date_char = lg3_service_email$today_outlook)), use_uid = T)
-    
+    lg3_service_email$find_log.ref <- lg3_service_email$find_log.ref[ length( lg3_service_email$find_log.ref )]
+
     lg3_service_email$search_log.spc <- paste0(yesterday, "_", systems$customer[i], "_", systems$location[i], "_", systems$line[i], "_spc")
     lg3_service_email$find_log.spc <- con$search(request = AND(mRpostman::string(expr = lg3_service_email$search_log.spc, where = "SUBJECT"),
                                                                since(date_char = lg3_service_email$today_outlook)), use_uid = T)
     lg3_service_email$find_log.spc <- sort( lg3_service_email$find_log.spc )
-    
+
     message("Found "
             , ifelse( is.na(lg3_service_email$find_log.drk), 0, length( lg3_service_email$find_log.drk )), " Dark spectra, "
             , ifelse( is.na(lg3_service_email$find_log.ref), 0, length( lg3_service_email$find_log.ref )), " Reference spectra and "
             , ifelse( length( lg3_service_email$find_log.spc ) == 0, 0, ifelse( is.na(lg3_service_email$find_log.spc), 0, length( lg3_service_email$find_log.spc ))), " Production spectra"
             , " from ", paste0(systems$customer[i], "_", systems$location[i], "_", systems$line[i], "_", systems$LG[i])
             , ", date = ", yesterday)
-    
+
     lg3_service_email$find_log <- c(lg3_service_email$find_log.drk, lg3_service_email$find_log.ref, lg3_service_email$find_log.spc)
     lg3_service_email$find_log <- sort( lg3_service_email$find_log )
-    
+
     # Download csv ####
     setwd(lg3_service_email$wdc)
-    
+
     # next loop if no attachments were found
     if(!any(!is.na(lg3_service_email$find_log))) next
     unlink(dir(path = lg3_service_email$wdc, recursive = T), force = T, recursive = T)
-    
+
     if(any(!is.na(lg3_service_email$find_log))){
       lg3_service_email$find_log %>%
         con$fetch_attachments(use_uid = T)
     }
     # Sys.sleep(60) # The system can be kind of busy, this is just to feel more secure
-    
-    
+
+
     # read data
     if( length( dir( pattern = "ref R export.csv", recursive = T) ) != 0){
       read.ref <- fread(dir( pattern = "ref R export.csv", recursive = T), sep = ";", dec = ",", fill = F)
       read.ref$time <- strftime(read.ref$datetime, format = "%H:%M:%S", tz = "UTC")
     }
-    
+
     if( length( dir( pattern = "drk R export.csv", recursive = T) ) != 0){
       read.drk <- fread(dir( pattern = "drk R export.csv", recursive = T), sep = ";", dec = ",", fill = F)
       read.drk$time <- strftime(read.drk$datetime, format = "%H:%M:%S", tz = "UTC")
     }
-    
+
     if( length( dir( pattern = "spc R export", recursive = T) ) != 0){
       read.spc <- lapply(dir( pattern = "spc R export", recursive = T), function( x ) fread(x, sep = ";", dec = ",", fill = F))
-      
+
       if(systems$LG[ i ] == "SG3"){
         # Timestamp Bug in SG3
         read.spc <- lapply(read.spc, function( x ) x[ , spectrumTimestamp := as.character(spectrumTimestamp)])
         read.spc <- lapply(read.spc, function( x ) x[ , statusTimestamp := as.character(statusTimestamp)])
       }
-      
+
       read.spc <- rbindlist(read.spc, fill = T)
       read.spc$time <- strftime(read.spc$datetime, format = "%H:%M:%S", tz = "UTC")
     }
-    
+
     # Move csv ####
     export_directory <- service_backup_path(systems$customer[ i ]
                                             , systems$location[ i ]
                                             , systems$line[ i ], dir_wd = wd)
-    
+
     if( length( lg3_service_email$find_log.ref ) != 0)
       if( exists("read.ref")){
         for(k in 1:length(unique(read.ref$date))){
@@ -132,17 +134,17 @@ service_email_LG3 <- function(today, yesterday
           setwd(export_directory)
           dir.create("ref", showWarnings = F)
           setwd("./ref")
-          
+
           if(length(which(substr(dir(),1,10)==unique(reftoexport$date)))>0){
             reftomerge <- fread(dir()[which(gsub("_ref.csv","",dir())==unique(reftoexport$date))], sep = ";", dec = ",")
-            
+
             ifelse(length(unique(names(reftomerge)!=names(reftoexport)))>1,
                    refmerged <- rbindlist(list(reftomerge,reftoexport), fill = T),
                    refmerged <- rbindlist(list(reftomerge,reftoexport)))
-            
+
             refmerged <- refmerged[order(refmerged$datetime),]
             refmerged <- refmerged[which(!duplicated(refmerged$datetime)),]
-            
+
             reftoexport <- refmerged
             if(is.na(as.numeric(gsub("X", "", names(reftoexport)[ncol(reftoexport)])))){
               suppressWarnings(refwl <- sort(as.numeric(gsub("X","",names(reftoexport)))))
@@ -155,7 +157,7 @@ service_email_LG3 <- function(today, yesterday
           rm(read.ref)
         }
       }
-    
+
     if( length( lg3_service_email$find_log.drk ) != 0)
       if( exists("read.drk")){
         for(k in 1:length(unique(read.drk$date))){
@@ -163,17 +165,17 @@ service_email_LG3 <- function(today, yesterday
           setwd(export_directory)
           dir.create("drk", showWarnings = F)
           setwd("./drk")
-          
+
           if(length(which(substr(dir(),1,10)==unique(drktoexport$date)))>0){
             drktomerge <- fread(dir()[which(gsub("_drk.csv","",dir())==unique(drktoexport$date))], sep = ";", dec = ",")
-            
+
             ifelse(length(unique(names(drktomerge)!=names(drktoexport)))>1,
                    drkmerged <- rbindlist(list(drktomerge,drktoexport), fill = T),
                    drkmerged <- rbindlist(list(drktomerge,drktoexport)))
-            
+
             drkmerged <- drkmerged[order(drkmerged$datetime),]
             drkmerged <- drkmerged[which(!duplicated(drkmerged$datetime)),]
-            
+
             drktoexport <- drkmerged
             if(is.na(as.numeric(gsub("X", "", names(drktoexport)[ncol(drktoexport)])))){
               suppressWarnings(drkwl <- sort(as.numeric(gsub("X","",names(drktoexport)))))
@@ -186,7 +188,7 @@ service_email_LG3 <- function(today, yesterday
           rm(read.drk)
         }
       }
-    
+
     if( length( lg3_service_email$find_log.spc ) != 0)
       if( exists("read.spc")){
         for(k in 1:length(unique(read.spc$date))){
@@ -194,23 +196,25 @@ service_email_LG3 <- function(today, yesterday
           setwd(export_directory)
           dir.create("spc", showWarnings = F)
           setwd("./spc")
-          
+
           if(length(which(substr(dir(),1,10)==unique(spctoexport$date)))>0){
             spctomerge <- fread(dir()[which(gsub("_spc.csv","",dir())==unique(spctoexport$date))], sep = ";", dec = ",")
-            
+
             if(systems$LG[ i ] == "SG3"){
               # Timestamp Bug in SG3
-              spctomerge <- spctomerge[ , spectrumTimestamp := as.character(spectrumTimestamp)]
-              spctomerge <- spctomerge[ , statusTimestamp := as.character(statusTimestamp)]
+              spctomerge$spectrumTimestamp <- as.character(spctomerge$spectrumTimestamp)
+              spctomerge$statusTimestamp <- as.character(spctomerge$statusTimestamp)
+              # spctomerge <- spctomerge[ , spectrumTimestamp := as.character(spectrumTimestamp)]
+              # spctomerge <- spctomerge[ , statusTimestamp := as.character(statusTimestamp)]
             }
-            
+
             ifelse(length(unique(names(spctomerge)!=names(spctoexport)))>1,
                    spcmerged <- rbindlist(list(spctomerge,spctoexport), fill = T),
                    spcmerged <- rbindlist(list(spctomerge,spctoexport)))
-            
+
             spcmerged <- spcmerged[order(spcmerged$datetime),]
             spcmerged <- spcmerged[which(!duplicated(spcmerged$datetime)),]
-            
+
             spctoexport <- spcmerged
             if(is.na(as.numeric(gsub("X", "", names(spctoexport)[ncol(spctoexport)])))){
               suppressWarnings(spcwl <- sort(as.numeric(gsub("X","",names(spctoexport)))))
@@ -223,11 +227,11 @@ service_email_LG3 <- function(today, yesterday
           rm(read.spc)
         }
       }
-    
+
     setwd(lg3_service_email$wdc)
     unlink(dir(path = lg3_service_email$wdc, recursive = T), force = T, recursive = T)
     unlink( list.dirs(), recursive = T)
-    
+
   }
 }
 
