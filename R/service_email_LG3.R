@@ -97,7 +97,6 @@ service_email_LG3 <- function(today, yesterday
     }
     # Sys.sleep(60) # The system can be kind of busy, this is just to feel more secure
 
-
     # read data
     if( length( dir( pattern = "ref R export.csv", recursive = T) ) != 0){
       read.ref <- fread(dir( pattern = "ref R export.csv", recursive = T), sep = ";", dec = ",", fill = F)
@@ -114,8 +113,12 @@ service_email_LG3 <- function(today, yesterday
 
       if(systems$LG[ i ] == "SG3"){
         # Timestamp Bug in SG3
-        read.spc <- lapply(read.spc, function( x ) x[ , spectrumTimestamp := as.character(spectrumTimestamp)])
-        read.spc <- lapply(read.spc, function( x ) x[ , statusTimestamp := as.character(statusTimestamp)])
+        for(k in 1 : length( read.spc)){
+          read.spc[[ k ]]$spectrumTimestamp <- as.character( read.spc[[ k ]]$spectrumTimestamp )
+          read.spc[[ k ]]$statusTimestamp <- as.character( read.spc[[ k ]]$statusTimestamp )
+          # read.spc <- lapply(read.spc, function( x ) x[ , spectrumTimestamp := as.character(spectrumTimestamp)])
+          # read.spc <- lapply(read.spc, function( x ) x[ , statusTimestamp := as.character(statusTimestamp)])
+        }
       }
 
       read.spc <- rbindlist(read.spc, fill = T)
@@ -191,6 +194,9 @@ service_email_LG3 <- function(today, yesterday
 
     if( length( lg3_service_email$find_log.spc ) != 0)
       if( exists("read.spc")){
+
+        spc.date <- read.spc
+
         for(k in 1:length(unique(read.spc$date))){
           spctoexport <- read.spc[which(read.spc$date==unique(read.spc$date)[k]),]
           setwd(export_directory)
@@ -227,6 +233,14 @@ service_email_LG3 <- function(today, yesterday
           rm(read.spc)
         }
       }
+
+    produkt_per_day_year(customer = systems$customer[ i ]
+                         , location = systems$location[ i ]
+                         , line = systems$line[ i ]
+                         , LG = systems$LG[ i ]
+                         , year = as.numeric(substr(unique( spc.date$date ), 1, 4))
+                         , dir_wd = wd
+                         , date_file = unique( spc.date$date ))
 
     setwd(lg3_service_email$wdc)
     unlink(dir(path = lg3_service_email$wdc, recursive = T), force = T, recursive = T)
