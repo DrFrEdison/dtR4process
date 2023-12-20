@@ -141,6 +141,7 @@ service_email_LG3 <- function(today, yesterday
           if(length(which(substr(dir(),1,10)==unique(reftoexport$date)))>0){
             reftomerge <- fread(dir()[which(gsub("_ref.csv","",dir())==unique(reftoexport$date))], sep = ";", dec = ",")
 
+            if( nrow( reftomerge ) < 1) reftomerge <- reftoexport
             ifelse(length(unique(names(reftomerge)!=names(reftoexport)))>1,
                    refmerged <- rbindlist(list(reftomerge,reftoexport), fill = T),
                    refmerged <- rbindlist(list(reftomerge,reftoexport)))
@@ -172,6 +173,7 @@ service_email_LG3 <- function(today, yesterday
           if(length(which(substr(dir(),1,10)==unique(drktoexport$date)))>0){
             drktomerge <- fread(dir()[which(gsub("_drk.csv","",dir())==unique(drktoexport$date))], sep = ";", dec = ",")
 
+            if( nrow( drktomerge ) < 1) drktomerge <- drktoexport
             ifelse(length(unique(names(drktomerge)!=names(drktoexport)))>1,
                    drkmerged <- rbindlist(list(drktomerge,drktoexport), fill = T),
                    drkmerged <- rbindlist(list(drktomerge,drktoexport)))
@@ -205,6 +207,7 @@ service_email_LG3 <- function(today, yesterday
 
           if(length(which(substr(dir(),1,10)==unique(spctoexport$date)))>0){
             spctomerge <- fread(dir()[which(gsub("_spc.csv","",dir())==unique(spctoexport$date))], sep = ";", dec = ",")
+            if( nrow( spctomerge ) < 1) spctomerge <- spctoexport
 
             if(systems$LG[ i ] == "SG3"){
               # Timestamp Bug in SG3
