@@ -235,16 +235,16 @@ service_email_LG3 <- function(today, yesterday
                                     systems$line[ i ],"_spc.csv"), sep = ";", dec = ",")
           rm(read.spc)
         }
+
+        produkt_per_day_year(customer = systems$customer[ i ]
+                             , location = systems$location[ i ]
+                             , line = systems$line[ i ]
+                             , LG = systems$LG[ i ]
+                             , year = as.numeric(substr(unique( spc.date$date ), 1, 4))
+                             , dir_wd = wd
+                             , date_file = unique( spc.date$date ))
+
       }
-
-    produkt_per_day_year(customer = systems$customer[ i ]
-                         , location = systems$location[ i ]
-                         , line = systems$line[ i ]
-                         , LG = systems$LG[ i ]
-                         , year = as.numeric(substr(unique( spc.date$date ), 1, 4))
-                         , dir_wd = wd
-                         , date_file = unique( spc.date$date ))
-
     setwd(lg3_service_email$wdc)
     unlink(dir(path = lg3_service_email$wdc, recursive = T), force = T, recursive = T)
     unlink( list.dirs(), recursive = T)
