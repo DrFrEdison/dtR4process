@@ -142,9 +142,7 @@ service_email_LG3 <- function(today, yesterday
             reftomerge <- fread(dir()[which(gsub("_ref.csv","",dir())==unique(reftoexport$date))], sep = ";", dec = ",")
 
             if( nrow( reftomerge ) < 1) reftomerge <- reftoexport
-            ifelse(length(unique(names(reftomerge)!=names(reftoexport)))>1,
-                   refmerged <- rbindlist(list(reftomerge,reftoexport), fill = T),
-                   refmerged <- rbindlist(list(reftomerge,reftoexport)))
+            refmerged <- rbindlist(list(reftomerge,reftoexport), fill = T)
 
             refmerged <- refmerged[order(refmerged$datetime),]
             refmerged <- refmerged[which(!duplicated(refmerged$datetime)),]
@@ -152,7 +150,7 @@ service_email_LG3 <- function(today, yesterday
             reftoexport <- refmerged
             if(is.na(as.numeric(gsub("X", "", names(reftoexport)[ncol(reftoexport)])))){
               suppressWarnings(refwl <- sort(as.numeric(gsub("X","",names(reftoexport)))))
-              for(i in paste0("X", refwl)) reftoexport <- reftoexport[ , moveme(names(reftoexport), paste(i, "last")), with = F]}
+              for(wl in paste0("X", refwl)) reftoexport <- reftoexport[ , moveme(names(reftoexport), paste(wl, "last")), with = F]}
           }
           fwrite(reftoexport,paste0(unique(reftoexport$date),"_",
                                     systems$customer[ i ],"_",
@@ -174,9 +172,7 @@ service_email_LG3 <- function(today, yesterday
             drktomerge <- fread(dir()[which(gsub("_drk.csv","",dir())==unique(drktoexport$date))], sep = ";", dec = ",")
 
             if( nrow( drktomerge ) < 1) drktomerge <- drktoexport
-            ifelse(length(unique(names(drktomerge)!=names(drktoexport)))>1,
-                   drkmerged <- rbindlist(list(drktomerge,drktoexport), fill = T),
-                   drkmerged <- rbindlist(list(drktomerge,drktoexport)))
+            drkmerged <- rbindlist(list(drktomerge,drktoexport), fill = T)
 
             drkmerged <- drkmerged[order(drkmerged$datetime),]
             drkmerged <- drkmerged[which(!duplicated(drkmerged$datetime)),]
@@ -184,7 +180,7 @@ service_email_LG3 <- function(today, yesterday
             drktoexport <- drkmerged
             if(is.na(as.numeric(gsub("X", "", names(drktoexport)[ncol(drktoexport)])))){
               suppressWarnings(drkwl <- sort(as.numeric(gsub("X","",names(drktoexport)))))
-              for(i in paste0("X", drkwl)) drktoexport <- drktoexport[ , moveme(names(drktoexport), paste(i, "last")), with = F]}
+              for(wl in paste0("X", drkwl)) drktoexport <- drktoexport[ , moveme(names(drktoexport), paste(wl, "last")), with = F]}
           }
           fwrite(drktoexport,paste0(unique(drktoexport$date),"_",
                                     systems$customer[ i ],"_",
@@ -217,9 +213,8 @@ service_email_LG3 <- function(today, yesterday
               # spctomerge <- spctomerge[ , statusTimestamp := as.character(statusTimestamp)]
             }
 
-            ifelse(length(unique(names(spctomerge)!=names(spctoexport)))>1,
-                   spcmerged <- rbindlist(list(spctomerge,spctoexport), fill = T),
-                   spcmerged <- rbindlist(list(spctomerge,spctoexport)))
+            if( nrow( spctomerge ) < 1) spctomerge <- spctoexport
+            spcmerged <- rbindlist(list(spctomerge,spctoexport), fill = T)
 
             spcmerged <- spcmerged[order(spcmerged$datetime),]
             spcmerged <- spcmerged[which(!duplicated(spcmerged$datetime)),]
@@ -227,7 +222,7 @@ service_email_LG3 <- function(today, yesterday
             spctoexport <- spcmerged
             if(is.na(as.numeric(gsub("X", "", names(spctoexport)[ncol(spctoexport)])))){
               suppressWarnings(spcwl <- sort(as.numeric(gsub("X","",names(spctoexport)))))
-              for(i in paste0("X", spcwl)) spctoexport <- spctoexport[ , moveme(names(spctoexport), paste(i, "last")), with = F]}
+              for(wl in paste0("X", spcwl)) spctoexport <- spctoexport[ , moveme(names(spctoexport), paste(wl, "last")), with = F]}
           }
           fwrite(spctoexport,paste0(unique(spctoexport$date),"_",
                                     systems$customer[ i ],"_",
